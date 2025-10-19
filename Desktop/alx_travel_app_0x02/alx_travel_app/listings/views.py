@@ -166,7 +166,7 @@ class ChapaPaymentVerifyView(APIView):
                             "status": payment.status
                         }, status=status.HTTP_200_OK)
 
-                    logger.warning(f"⚠️ No payment found for tx_ref={tx_ref} or reference={chapa_ref}")
+                    logger.warning(f"No payment found for tx_ref={tx_ref} or reference={chapa_ref}")
                     return Response({"error": "Payment record not found."}, status=status.HTTP_404_NOT_FOUND)
 
             # If all attempts failed
@@ -178,6 +178,42 @@ class ChapaPaymentVerifyView(APIView):
 
         except Exception as e:
             logger.exception("💥 Error verifying Chapa payment")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ChapaPaymentWebhookView(APIView):
+    permission_classes = [AllowAny]   
+
+    def post(self, request, *args, **kwargs):
+        try:
+            payload = request.data
+            logger.info(f"Received Chapa webhook: {payload}")
+
+            chapa_reference = payload.get("reference")
+            status_chapa = payload.get("status")
+
+            if not chapa_reference:
+                logger.error("Chapa webhook missing 'reference'")
+                return Response({"error": "Missing reference"}, status=status.HTTP_400_BAD_REQUEST)
+
+            payment = Payments.objects.filter(chapa_reference=chapa_reference).first()
+            if not payment:
+                logger.error(f"No payment found for Chapa reference: {chapa_reference}")
+                return Response({"error": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            payment.status = status_chapa or payment.status
+            # Optional: store Chapa’s raw data if you have such a field
+            if hasattr(payment, "chapa_response"):
+                payment.chapa_response = payload
+            payment.save()
+
+            logger.info(f"Chapa webhook processed: {chapa_reference} ({payment.status})")
+            return Response({"message": "Webhook processed successfully."}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.exception("Error processing Chapa webhook")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # @method_decorator(csrf_exempt, name='dispatch')

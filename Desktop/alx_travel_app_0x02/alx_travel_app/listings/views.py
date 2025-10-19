@@ -215,7 +215,3 @@ class ChapaPaymentWebhookView(APIView):
         except Exception as e:
             logger.exception("Error processing Chapa webhook")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# @method_decorator(csrf_exempt, name='dispatch')
-# class ChapaPaymentWebhookView(APIView):
-#     permission_classes = [AllowAny]   

@@ -11,6 +11,7 @@ from .serializers import PaymentCreateSerializer, BookingSerializer, ReviewSeria
 from .models import Payments, Booking, Listing, Review
 from .Utils.utils import generate_payment_reference 
 from django.conf import settings
+from .tasks import send_booking_confirmation_email 
 import logging
 import uuid
 logger = logging.getLogger(__name__)
@@ -42,9 +43,45 @@ class BookingCreateView(APIView):
 
     def post(self, request):
         serializer = BookingSerializer(data=request.data, context={'request': request})
+
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            try:
+                booking = serializer.save()
+
+                # Determine user email (authenticated or guest)
+                user_email = None
+                if booking.user and getattr(booking.user, 'email', None):
+                    user_email = booking.user.email
+                elif serializer.validated_data.get('email'):
+                    user_email = serializer.validated_data['email']
+
+                # Trigger Celery background email task
+                if user_email:
+                    try:
+                        send_booking_confirmation_email.delay(user_email, booking.booking_id)
+                        logger.info(f"Celery task triggered for booking ID {booking.booking_id} -> {user_email}")
+                    except Exception as e:
+                        logger.error(f"Failed to trigger Celery email task for booking {booking.id}: {str(e)}", exc_info=True)
+                else:
+                    logger.warning(f"No email provided for booking ID {booking.id}. Email will not be sent.")
+
+                return Response(
+                    {
+                        "message": "Booking created successfully. A confirmation email will be sent shortly.",
+                        "data": serializer.data
+                    },
+                    status=status.HTTP_201_CREATED
+                )
+
+            except Exception as e:
+                logger.error(f"Error while saving booking: {str(e)}", exc_info=True)
+                return Response(
+                    {"error": "Internal server error while creating booking."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        # Validation errors
+        logger.error(f"Booking creation failed. Errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

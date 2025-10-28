@@ -161,10 +161,26 @@ LOGGING = {
     },
 }
 
-
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+# ----------------------
+# 
+# ----------------------
+CELERY_BROKER_URL = 'amqp://guest:guest@localhost:5672//'
+CELERY_RESULT_BACKEND = 'rpc://'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'UTC'
+CELERY_TIMEZONE = 'Africa/Lagos'
+
+
+# ----------------------
+# Sendgrid Email Configuration
+# ----------------------
+EMAIL_BACKEND = 'sendgrid_backend.SendgridBackend'
+SENDGRID_API_KEY = config("SENDGRID_API_KEY")
+
+SENDGRID_SANDBOX_MODE_IN_DEBUG = False
+SENDGRID_ECHO_TO_STDOUT = True
+
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="noreply@yourdomain.com")
+
+

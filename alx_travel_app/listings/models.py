@@ -16,6 +16,7 @@ class Booking(models.Model):
     booking_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     listing = models.ForeignKey(Listing, on_delete=models.CASCADE)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
+    email = models.EmailField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=[('pending','Pending'),('confirmed','Confirmed'),('canceled','Canceled')], default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
 

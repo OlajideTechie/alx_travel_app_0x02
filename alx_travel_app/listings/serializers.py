@@ -22,10 +22,11 @@ class BookingSerializer(serializers.ModelSerializer):
     
     listing = serializers.PrimaryKeyRelatedField(queryset=Listing.objects.all())
     user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    email = serializers.EmailField(required=False, allow_null=True)
     
     class Meta:
         model = Booking
-        fields = ['booking_id', 'listing', 'user', 'status', 'created_at']
+        fields = ['booking_id', 'listing', 'user', 'email', 'status', 'created_at']
         read_only_fields = ['booking_id', 'status', 'created_at']
 
     def validate_user(self, value):
@@ -40,7 +41,6 @@ class BookingSerializer(serializers.ModelSerializer):
         if value not in ['pending', 'confirmed', 'canceled']:
             raise serializers.ValidationError("Status must be one of: pending, confirmed, canceled.")
         return value
-    
     
 class ReviewSerializer(serializers.ModelSerializer):
     
